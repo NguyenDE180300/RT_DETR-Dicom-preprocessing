@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Weights and Models
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Datasets and Preprocessing
+rtdetr_preprocess_runner/downloads/
+rtdetr_preprocess_runner/extracted/
+rtdetr_preprocess_runner/.mplconfig/
+
+# Logs and Results
+rtdetr_preprocess_runner/runs/
+rtdetr_preprocess_runner/results/
+runs/
+*.log
+
+# CSVs (if they are large datasets)
+# annotations_all_merged_other_1000nf.csv
+# training_summary.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+rclone.conf
