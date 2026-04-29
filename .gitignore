@@ -7,7 +7,7 @@ venv/
 ENV/
 
 # Weights and Models
-*.pt
+# *.pt (Now tracked by Git LFS)
 *.pth
 *.onnx
 *.engine
@@ -18,9 +18,9 @@ rtdetr_preprocess_runner/extracted/
 rtdetr_preprocess_runner/.mplconfig/
 
 # Logs and Results
-rtdetr_preprocess_runner/runs/
-rtdetr_preprocess_runner/results/
-runs/
+# rtdetr_preprocess_runner/runs/
+# rtdetr_preprocess_runner/results/
+# runs/
 *.log
 
 # CSVs (if they are large datasets)
