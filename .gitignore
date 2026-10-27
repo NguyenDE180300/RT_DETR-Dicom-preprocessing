@@ -33,3 +33,12 @@ Thumbs.db
 
 # Secrets
 rclone.conf
+
+# Medical source data and generated inference files
+*.dcm
+rtdetr_combo_api/runs/
+rtdetr_combo_api/weights/*.pt
+inference_results/
+runs/
+data_info_report.txt
+.ipynb_checkpoints/

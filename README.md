@@ -1,22 +1,31 @@
-# RT-DETR DICOM Preprocessing Experiments
+# Chest X-Ray Preprocessing and Detection Experiments
 
-This repository contains the **RT-DETR portion** of a chest X-ray preprocessing and object-detection study. It trains RT-DETR on six preprocessed VinDr-CXR dataset variants and includes a small dataset inspection utility.
+This repository collects the code available in the local `Lung_2026 finals` project for chest X-ray preprocessing and object detection. It includes RT-DETR, YOLO, DINO-related experiments, an RT-DETR three-channel preprocessing experiment, analysis notebooks, and a Dockerized DICOM inference API.
 
-> **Scope:** This repository is a partial code release. The YOLOv8, Faster R-CNN, and three-channel combined-preprocessing implementations/results discussed in the associated paper are not included here. The available code is not a complete reproduction of the paper.
+> **Research scope:** The repository does not contain a Faster R-CNN training implementation. It is therefore a partial release of the study associated with [DOI: 10.1007/978-981-92-5699-0_29](https://doi.org/10.1007/978-981-92-5699-0_29), not a complete reproduction of every paper experiment.
 
-## Contents
+## Repository map
 
-- `rtdetr_train_full.py` — downloads each prepared dataset with Rclone, prepares the training split/labels, trains RT-DETR, evaluates validation and test splits, and writes metrics and run artifacts.
-- `data_info.py` — inspects a prepared dataset, matches CSV labels to image files, and writes a split/class summary.
-- `annotations_all_merged_other_1000nf.csv` — annotation CSV used by the CSV-based training path.
-- `requirements.txt` — Python dependencies for training.
-- `rtdetr_preprocess_runner/` — saved experiment summaries and artifacts. Large model weights may be stored through Git LFS.
+| Path | Purpose |
+| --- | --- |
+| `rtdetr_train_full.py` | RT-DETR training across six single-preprocessing datasets |
+| `data_info.py` | Dataset and annotation inspection utility |
+| `experiments/yolo/` | YOLO training scripts and an additional YOLO training implementation |
+| `experiments/rtdetr_combo/` | RT-DETR training/preprocessing for three-channel combinations |
+| `experiments/rtdetr_minmax/` | Separate RT-DETR min-max training script |
+| `experiments/dino/` | DINO training scripts; external MMDetection setup/configuration is required |
+| `experiments/inference_compare.py` | Comparison/inference script for available model variants |
+| `rtdetr_combo_api/` | FastAPI inference service, Dockerfile, Compose file, and browser UI |
+| `notebooks/` | Training, preprocessing, visualization, and data inspection notebooks; saved outputs were cleared |
+| `rtdetr_preprocess_runner/` | RT-DETR run summaries and selected training artifacts |
 
-## Preprocessing variants
+The local project also contained datasets, DICOM samples, generated prediction images, logs, checkpoints, and Rclone configuration files. Those are not included in this source upload. No credentials or DICOM files should be committed.
 
-The training script expects six already-preprocessed image datasets, configured in `PREPROCESS_JOBS`:
+## RT-DETR single-preprocessing pipeline
 
-| Variant | Configured dataset folder |
+The main training script expects six preprocessed VinDr-CXR datasets, configured in `PREPROCESS_JOBS`:
+
+| Variant | Default Rclone subfolder |
 | --- | --- |
 | CLAHE | `vinbigdata-CLAHE_512-png` |
 | Histogram equalization | `vinbigdata-Histogram_EQ_512-png` |
@@ -25,63 +34,9 @@ The training script expects six already-preprocessed image datasets, configured 
 | Raw min-max | `vinbigdata-raw_minmax-png-512` |
 | VOI LUT | `vinbigdata-voi_lut-png-512` |
 
-The datasets themselves are not generated from raw DICOM files by this repository. They must already be available in the configured Rclone remote or local workspace.
+The training script defaults to 50 epochs, image size 512, batch size 64, and a 70/10/20 split with seed 42. It prepares the runtime dataset, trains RT-DETR, evaluates validation/test splits, and writes a CSV summary. Exact settings and available environment overrides are defined in `rtdetr_train_full.py`.
 
-## Requirements
-
-- Python 3.10 or a compatible environment for the pinned PyTorch packages
-- NVIDIA GPU and a compatible CUDA setup for GPU training (CPU execution is supported but impractical for full training)
-- [Rclone](https://rclone.org/) installed and available on `PATH`
-- Access to the prepared dataset folders, either through Rclone or by staging them locally
-
-Install Python dependencies:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-On Windows, activate the environment with `.venv\\Scripts\\activate`.
-
-## Data access and configuration
-
-The default training configuration reads `rclone:` as its remote prefix and expects an `rclone.conf` file beside `rtdetr_train_full.py`. **Do not commit this file** because it may contain access credentials. Configure the Rclone remote locally, then set the base if its name/path differs:
-
-```bash
-export RCLONE_REMOTE_BASE="myremote:"
-```
-
-The default annotation CSV is `annotations_all_merged_other_1000nf.csv` next to the training script. You can select another CSV with `RTDETR_LABEL_CSV`.
-
-The training script defaults to 50 epochs, image size 512, batch size 64, and a 70/10/20 train/validation/test split with seed 42. Adjust the constants or environment options in `rtdetr_train_full.py` for your hardware and dataset. A quick-check mode is available:
-
-```bash
-RTDETR_QUICK_CHECK=1 RTDETR_QUICK_CHECK_JOB_LIMIT=1 python rtdetr_train_full.py
-```
-
-Run all six configured experiments with:
-
-```bash
-python rtdetr_train_full.py
-```
-
-The script writes downloaded/extracted data, training runs, and summaries under `rtdetr_preprocess_runner/`. Review disk usage before starting a full run.
-
-## Dataset inspection
-
-`data_info.py` uses the first configured dataset (CLAHE) and the label CSV to produce `data_info_report.txt`:
-
-```bash
-python data_info.py
-```
-
-It uses the same Rclone remote settings and expects the prepared images to be available.
-
-## Reported RT-DETR results
-
-The checked-in experiment summary reports the following **test mAP@0.5** values:
+The checked-in summary reports the following test mAP@0.5 results for these RT-DETR runs:
 
 | Preprocessing | Test mAP@0.5 |
 | --- | ---: |
@@ -92,15 +47,69 @@ The checked-in experiment summary reports the following **test mAP@0.5** values:
 | Histogram equalization | 31.75% |
 | Adaptive percentile | 20.51% |
 
-These values describe the included RT-DETR runs and their recorded split/configuration. They should not be treated as a complete reproduction of the paper's cross-model or combined-channel results.
+These are the recorded results for the included configuration and split; they do not establish equivalence to every result in the publication.
 
-## Related paper
+## Install and run the main RT-DETR experiments
 
-The work is related to the Springer chapter [DOI: 10.1007/978-981-92-5699-0_29](https://doi.org/10.1007/978-981-92-5699-0_29). This repository covers only the RT-DETR single-preprocessing experiments available in this code folder; consult the publication for the complete study and its reported methodology.
+Use Python 3.10 or a compatible environment. GPU training requires a compatible NVIDIA/CUDA setup.
 
-## Notes
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
 
-- The repository does not include the full image dataset or raw DICOM collection.
-- Rclone configuration, credentials, and any private dataset paths must be set up locally.
-- Training and inference artifacts can be large; check Git LFS quotas and repository size before adding model weights.
-- Dataset access and any redistribution must follow the dataset's terms and the applicable research/privacy requirements.
+Install [Rclone](https://rclone.org/) separately and configure a remote that can access the prepared image datasets. Keep `rclone.conf` local; it may contain credentials. The script defaults to the `rclone:` prefix and looks for `rclone.conf` next to `rtdetr_train_full.py`. Set a different remote prefix when needed:
+
+```bash
+export RCLONE_REMOTE_BASE="myremote:"
+```
+
+Run a small quick check:
+
+```bash
+RTDETR_QUICK_CHECK=1 RTDETR_QUICK_CHECK_JOB_LIMIT=1 python rtdetr_train_full.py
+```
+
+Run all configured variants:
+
+```bash
+python rtdetr_train_full.py
+```
+
+The datasets themselves are not generated from raw DICOM by the main script; prepared datasets must be accessible through Rclone or staged locally. Review the data paths and training settings in each experiment script before running it. Some scripts retain paths specific to the original research machines.
+
+## Three-channel RT-DETR experiments
+
+The scripts under `experiments/rtdetr_combo/` cover these channel combinations:
+
+- Raw min-max + VOI LUT + percentile clipping
+- Raw min-max + VOI LUT + CLAHE
+- Raw min-max + percentile clipping + CLAHE
+- VOI LUT + percentile clipping + CLAHE
+
+The training code and inference API are separate pieces. The API currently builds its model input from raw min-max, VOI LUT, and CLAHE. Provide the corresponding trained checkpoint when launching the service.
+
+## Docker DICOM inference API
+
+The service under `rtdetr_combo_api/` accepts a DICOM upload, creates preprocessing previews, runs RT-DETR, and returns an annotated PNG. The Docker files and service source are included. The model checkpoint is not included; add the trained compatible model locally at `rtdetr_combo_api/weights/best.pt` before starting the service.
+
+```bash
+cd rtdetr_combo_api
+mkdir -p weights
+# Place the compatible checkpoint at weights/best.pt
+docker compose up --build
+```
+
+Open `http://127.0.0.1:8000`. The API exposes `/health`, `/predict`, and `/predict-image`; see `rtdetr_combo_api/README.md` for request examples. Uploaded DICOMs and generated outputs are written under `rtdetr_combo_api/runs/`; do not publish that directory.
+
+## Notebooks and remaining experiments
+
+The notebooks are provided for inspection and reuse, with saved cell outputs removed. DINO scripts require the appropriate external DINO/MMDetection packages, configs, and dataset layout. Those dependencies and the Faster R-CNN implementation are not present in this repository.
+
+## Large files and data handling
+
+- Image datasets, raw DICOMs, generated prediction images, run logs, and local Rclone configurations are excluded.
+- Training checkpoints may be large. The repository is configured for Git LFS on `.pt` files; install Git LFS before adding or pushing new checkpoints.
+- Do not upload identifiable medical information or credentials. Follow VinDr-CXR and institutional data-use terms when accessing or redistributing data.

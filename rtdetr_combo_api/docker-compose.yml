@@ -1,0 +1,12 @@
+services:
+  rtdetr-combo-api:
+    build: .
+    image: rtdetr-combo-api:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./runs:/app/runs
+      - ./weights:/app/weights:ro
+    environment:
+      RTDETR_WEIGHTS: /app/weights/best.pt
+      RTDETR_RUNS_DIR: /app/runs
